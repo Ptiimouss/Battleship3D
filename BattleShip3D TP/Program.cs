@@ -1,13 +1,107 @@
 ﻿using System;
+using System.Collections.Generic;
 using MySql.Data.MySqlClient;
 using MongoDB.Driver;
 using MongoDB.Bson;
-namespace BattleShip3D_TP
+
+
+class MySQLDatabase
 {
-    internal class Program
+    private static string connectionString = "Server=81.1.20.23;Database=USRS6N_1;UserId=EtudiantJvd;Password=!?CnamNAQ01?!;";
+
+    // Connexion MySQL
+    public static MySqlConnection Connect()
     {
-        public static void Main(string[] args)
+        MySqlConnection conn = new MySqlConnection(connectionString);
+        conn.Open();
+        return conn;
+    }
+
+    // Récupérer des données depuis une table MySQL, mettre en paramètre le nom de la table et une liste de colonnes
+    public static void GetAllDataFromTable(string tableName, List<string> columns)
+    {
+        try
         {
+            using (MySqlConnection conn = Connect())
+            {
+                string columnsString = string.Join(", ", columns);
+                string query = $"SELECT {columnsString} FROM {tableName} LIMIT 10;";
+                using (MySqlCommand cmd = new MySqlCommand(query, conn))
+                using (MySqlDataReader reader = cmd.ExecuteReader())
+                {
+                    Console.WriteLine($"Données de la table {tableName} (colonnes: {columnsString}):");
+                    while (reader.Read())
+                    {
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            // Affiche les données de chaque colonne
+                            Console.WriteLine($"{reader.GetName(i)}: {reader[i]}");
+                        }
+                    }
+                }
+            }
         }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erreur de connexion MySQL : {ex.Message}");
+        }
+    }
+}
+
+class MongoDatabase
+{
+    private static string connectionString = "mongodb://AdminLJV:!!DBLjv1858**@81.1.20.23:27017/";
+    private static MongoClient client = new MongoClient(connectionString);
+    private static IMongoDatabase database = client.GetDatabase("USRS6N_2025");
+
+    // Connexion à une collection
+    public static IMongoCollection<BsonDocument> GetCollection(string collectionName)
+    {
+        return database.GetCollection<BsonDocument>(collectionName);
+    }
+
+    // Récupérer des données depuis une collection MongoDB, mettre en paramètre le nom de la collection et une liste de champs
+    public static void GetAllDataFromCollection(string collectionName, List<string> fields)
+    {
+        try
+        {
+            var collection = GetCollection(collectionName);
+            
+            var projection = new BsonDocument();
+            foreach (var field in fields)
+            {
+                projection.Add(field, 1);
+            }
+
+            var documents = collection.Find(new BsonDocument()).Project<BsonDocument>(projection).ToList();
+
+            Console.WriteLine($"Documents dans la collection {collectionName} (champs: {string.Join(", ", fields)}):");
+            foreach (var doc in documents)
+            {
+                Console.WriteLine(doc.ToJson());
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erreur de connexion MongoDB : {ex.Message}");
+        }
+    }
+}
+class Program
+{
+    static void Main()
+    {
+        // Liste de colonnes à récupérer dans MySQL
+        
+        Console.WriteLine("Connexion à MySQL...");
+        List<string> fieldsSQL = new List<string> { "Pseudo", "Nom","Prenom" };
+        MySQLDatabase.GetAllDataFromTable("Gr3_Joueur", fieldsSQL);
+        
+        // Liste de champs à récupérer dans MongoDB
+        
+        Console.WriteLine("Connexion à MongoDB...");
+        List<string> fieldsMDB = new List<string> { "IdPartie", "Pseudo","TypeCoup" };
+        MongoDatabase.GetAllDataFromCollection("Gr3_Action", fieldsMDB);
+
     }
 }
