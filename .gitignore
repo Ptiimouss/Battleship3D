@@ -1,0 +1,31 @@
+﻿# Dossier des packages NuGet
+packages/
+!packages/repositories.config
+
+# Fichiers de build
+bin/
+obj/
+
+# Fichiers Rider/JetBrains
+.idea/
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+
+# Fichiers temporaires et logs
+*.log
+*.tmp
+*.bak
+
+# Clés SSH et secrets potentiels (à ajuster selon ton projet)
+*.pfx
+*.snk
+
+# Dépendances locales et fichiers spécifiques à Rider
+.vscode/
+*.csproj.user
+
+# Ajout pour éviter les fichiers MongoDB et MySQL temporaires
+*.db
+*.log
