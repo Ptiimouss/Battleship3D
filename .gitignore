@@ -1,7 +1,3 @@
-﻿# Dossier des packages NuGet
-packages/
-!packages/repositories.config
-
 # Fichiers de build
 bin/
 obj/
