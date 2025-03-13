@@ -4,7 +4,6 @@ using MySql.Data.MySqlClient;
 using MongoDB.Driver;
 using MongoDB.Bson;
 
-
 class MySQLDatabase
 {
     private static string connectionString = "Server=81.1.20.23;Database=USRS6N_1;UserId=EtudiantJvd;Password=!?CnamNAQ01?!;";
@@ -45,6 +44,34 @@ class MySQLDatabase
         {
             Console.WriteLine($"Erreur de connexion MySQL : {ex.Message}");
         }
+    }
+
+    public static string[] CustomQuery(string query)
+    {
+        string[] returnArray = null;
+        try
+        {
+            using (MySqlConnection conn = Connect())
+            {
+                using (MySqlCommand cmd = new MySqlCommand(query, conn))
+                using (MySqlDataReader reader = cmd.ExecuteReader())
+                {
+                    while (reader.Read())
+                    {
+                        returnArray = new string[reader.FieldCount];
+                        for (int i = 0; i < reader.FieldCount; i++)
+                        {
+                            returnArray[i] = (string)reader[i];
+                        }
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Console.WriteLine($"Erreur de connexion MySQL : {ex.Message}");
+        }
+        return returnArray;
     }
 }
 
@@ -87,10 +114,56 @@ class MongoDatabase
         }
     }
 }
+
+class BattleshipLogger
+{   
+    public void Login()
+    {
+        Console.WriteLine("Welcome to BattleShip 3D !");
+        Console.WriteLine("Enter your pseudo :");
+        bool player_found = false;
+        string pseudo = "";
+        while (!player_found)
+        {
+            pseudo = Console.ReadLine();
+            string[] result = MySQLDatabase.CustomQuery($"SELECT Pseudo FROM Gr3_Joueur WHERE Pseudo = \"{pseudo}\";");
+            if (result != null) 
+            {
+                player_found = true;
+            }
+            else {
+                Console.WriteLine("Player Not Found, please enter a new pseudo : ");
+                // @TODO ASK TO CREATE A NEW ACCOUNT
+            }
+        }
+        bool player_connected = false;
+        Console.WriteLine("Enter your password :");
+        while (!player_connected)
+        {
+            string password = Console.ReadLine();
+            string[] result = MySQLDatabase.CustomQuery($"SELECT Pseudo FROM Gr3_Joueur WHERE Pseudo = \"{pseudo}\" AND Mot_De_Passe = \"{password}\"  ;");
+            if (result != null)
+            {
+                player_connected = true;
+            }
+            else
+            {
+                Console.WriteLine("Password incorrect, please try again : ");
+                // @TODO ASK IF BACK TO LOGIN
+            }
+        }
+        Console.WriteLine("Player connected !");
+    }
+}
+
 class Program
 {
     static void Main()
     {
+        BattleshipLogger battleshipLogger = new BattleshipLogger();
+        battleshipLogger.Login();
+
+        /*
         // Liste de colonnes à récupérer dans MySQL
         
         Console.WriteLine("Connexion à MySQL...");
@@ -102,6 +175,6 @@ class Program
         Console.WriteLine("Connexion à MongoDB...");
         List<string> fieldsMDB = new List<string> { "IdPartie", "Pseudo","TypeCoup" };
         MongoDatabase.GetAllDataFromCollection("Gr3_Action", fieldsMDB);
-
+        */
     }
 }
