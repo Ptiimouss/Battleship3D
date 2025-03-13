@@ -1,6 +1,10 @@
 # Fichiers de build
 bin/
 obj/
+Debug/
+
+# Fichiers vs
+.vs/
 
 # Fichiers Rider/JetBrains
 .idea/
