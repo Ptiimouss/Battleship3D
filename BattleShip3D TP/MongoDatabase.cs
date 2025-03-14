@@ -68,20 +68,10 @@ namespace BattleShip3D_TP
         */
 
         // A TESTER
-        public static List<BsonDocument> ExecuteMongoCommand(string command)
+        public static List<BsonDocument> ExecuteMongoCommand(string collectionName, string operation, string jsonContent)
         {
             try
             {
-                var match = Regex.Match(command, "(\\w+)\\.(\\w+)\\((.*)\\)");
-                if (!match.Success)
-                {
-                    Console.WriteLine("Commande MongoDB invalide.");
-                    return new List<BsonDocument>();
-                }
-
-                string collectionName = match.Groups[1].Value;
-                string operation = match.Groups[2].Value;
-                string jsonContent = match.Groups[3].Value;
                 var collection = GetCollection(collectionName);
 
                 if (operation == "insertOne")
@@ -94,11 +84,18 @@ namespace BattleShip3D_TP
                 else if (operation == "find")
                 {
                     var filter = BsonDocument.Parse(jsonContent);
-                    return collection.Find(filter).ToList();
+                    var documents = collection.Find(filter).ToList();
+
+                    Console.WriteLine($"Documents trouvés dans {collectionName}:");
+                    foreach (var doc in documents)
+                    {
+                        Console.WriteLine(doc.ToJson());
+                    }
+                    return documents;
                 }
                 else
                 {
-                    Console.WriteLine("Opération MongoDB non supportée.");
+                    Console.WriteLine("Opération MongoDB non supportée. Utilise 'insertOne' ou 'find'.");
                     return new List<BsonDocument>();
                 }
             }
