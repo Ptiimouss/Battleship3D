@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
 namespace BattleShip3D_TP
@@ -44,6 +45,67 @@ namespace BattleShip3D_TP
             catch (Exception ex)
             {
                 Console.WriteLine($"Erreur de connexion MongoDB : {ex.Message}");
+            }
+        }
+
+        /*
+        public static List<BsonDocument> QueryCollection(string collectionName, string queryJson)
+        {
+            try
+            {
+                var collection = GetCollection(collectionName);
+                var filter = BsonDocument.Parse(queryJson);
+                var documents = collection.Find(filter).ToList();
+
+                return documents;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erreur de requête MongoDB : {ex.Message}");
+                return new List<BsonDocument>();
+            }
+        }
+        */
+
+        // A TESTER
+        public static List<BsonDocument> ExecuteMongoCommand(string command)
+        {
+            try
+            {
+                var match = Regex.Match(command, "(\\w+)\\.(\\w+)\\((.*)\\)");
+                if (!match.Success)
+                {
+                    Console.WriteLine("Commande MongoDB invalide.");
+                    return new List<BsonDocument>();
+                }
+
+                string collectionName = match.Groups[1].Value;
+                string operation = match.Groups[2].Value;
+                string jsonContent = match.Groups[3].Value;
+                var collection = GetCollection(collectionName);
+
+                if (operation == "insertOne")
+                {
+                    var document = BsonDocument.Parse(jsonContent);
+                    collection.InsertOne(document);
+                    Console.WriteLine("Insertion réussie.");
+                    return new List<BsonDocument> { document };
+                }
+                else if (operation == "find")
+                {
+                    var filter = BsonDocument.Parse(jsonContent);
+                    return collection.Find(filter).ToList();
+                }
+                else
+                {
+                    Console.WriteLine("Opération MongoDB non supportée.");
+                    return new List<BsonDocument>();
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erreur lors de l'exécution de la commande MongoDB : {ex.Message}");
+                return new List<BsonDocument>();
             }
         }
     }

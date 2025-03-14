@@ -147,6 +147,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="BattleshipGame.cs" />
     <Compile Include="BattleshipLobby.cs" />
     <Compile Include="MongoDatabase.cs" />
     <Compile Include="MySQLDataBase.cs" />
