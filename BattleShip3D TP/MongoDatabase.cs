@@ -69,7 +69,7 @@ namespace BattleShip3D_TP
 
         // A TESTER
         
-        public static List<BsonDocument> ExecuteMongoCommand(string collectionName, string operation, string jsonContent)
+        public static List<BsonDocument> ExecuteMongoCommand(string collectionName, string operation, string jsonContent, string jsonSort = "{}", int limit = 0)
         {
             try
             {
@@ -85,7 +85,13 @@ namespace BattleShip3D_TP
                 else if (operation == "find")
                 {
                     var filter = BsonDocument.Parse(jsonContent);
-                    var documents = collection.Find(filter).ToList();
+                    var sort = BsonDocument.Parse(jsonSort);
+
+                    var query = collection.Find(filter).Sort(sort);
+                    if (limit > 0)
+                        query = query.Limit(limit);
+
+                    var documents = query.ToList();
 
                     Console.WriteLine($"Documents trouvés dans {collectionName}:");
                     foreach (var doc in documents)
@@ -106,5 +112,6 @@ namespace BattleShip3D_TP
                 return new List<BsonDocument>();
             }
         }
+
     }
 }
