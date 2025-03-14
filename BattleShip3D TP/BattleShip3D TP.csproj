@@ -149,6 +149,7 @@
   <ItemGroup>
     <Compile Include="BattleshipGame.cs" />
     <Compile Include="BattleshipLobby.cs" />
+    <Compile Include="EnemyShip.cs" />
     <Compile Include="MongoDatabase.cs" />
     <Compile Include="MySQLDataBase.cs" />
     <Compile Include="Program.cs" />

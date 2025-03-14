@@ -5,6 +5,8 @@ using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
 using MySqlX.XDevAPI.Common;
+using System.Numerics;
+using System.Runtime.InteropServices;
 
 namespace BattleShip3D_TP
 {
@@ -144,6 +146,67 @@ namespace BattleShip3D_TP
             }
         }
 
+        private EnemyShip[] CreateEnemyShips()
+        {
+            List<EnemyShip> ships = new List<EnemyShip>();
+            bool isInputValid = false;
+
+            Console.WriteLine("Enter the list of enemy ships (size,type,position).");
+            Console.WriteLine("Valid types: segment, carre, cube.");
+            Console.WriteLine("Example input: 3, segment, 0,0,0");
+            Console.WriteLine("Type 'done' when you are finished.");
+
+            while (!isInputValid)
+            {
+                Console.Write("Enter a ship (or 'done' to finish): ");
+                string input = Console.ReadLine().Trim();
+
+                if (input.ToLower() == "done")
+                {
+                    if (ships.Count > 0)
+                    {
+                        isInputValid = true;
+                    }
+                    else
+                    {
+                        Console.WriteLine("You must enter at least one ship before finishing.");
+                    }
+                    continue;
+                }
+
+                string[] parts = input.Split(',');
+                if (parts.Length == 5)
+                {
+                    string type_string = parts[1].Trim().ToLower();
+                    bool isSizeValid = int.TryParse(parts[0].Trim(), out int size);
+                    bool isXValid = int.TryParse(parts[2].Trim(), out int x);
+                    bool isYValid = int.TryParse(parts[3].Trim(), out int y);
+                    bool isZValid = int.TryParse(parts[4].Trim(), out int z);
+
+                    // @TODO RANDOMIZE ENEMY SHIPS POSITION
+
+                    if (EnemyShip.ShipTypeFromString(type_string).HasValue && isSizeValid && isSizeValid && isXValid && isYValid && isZValid)
+                    {
+                        Vector3 shipPosition = new Vector3(x,y,z);
+                        ShipCell shipCell = new ShipCell(shipPosition,false);
+                        EnemyShip enyShip = new EnemyShip(ships.Count, EnemyShip.ShipTypeFromString(type_string).Value, size, new ShipCell[] {shipCell});
+                        // @TODO DEDUCE OTHER CELLS
+                        ships.Add(enyShip);
+                    }
+                    else
+                    {
+                        Console.WriteLine("Invalid format. Please enter: (size,type,position) (3, segment, 0,0,0)");
+                    }
+                }
+                else
+                {
+                    Console.WriteLine("Invalid format. Please enter: (size,type,position) (3, segment, 0,0,0)");
+                }
+            }
+
+            return ships.ToArray();
+        }
+
         private bool CreateGame()
         {
             bool is_input_valid = false;
@@ -178,67 +241,9 @@ namespace BattleShip3D_TP
                     Console.WriteLine("Time limit not valid, please try again.");
                 }
             }
-            List<(string type, int size, int count)> ships = new List<(string, int, int)>();
-            bool isInputValid = false;
 
-            Console.WriteLine("Enter the list of enemy ships (type, size, count).");
-            Console.WriteLine("Valid types: segment, carré, cube.");
-            Console.WriteLine("Example input: segment, 3, 4");
-            Console.WriteLine("Type 'done' when you are finished.");
-
-            while (!isInputValid)
-            {
-                Console.Write("Enter a ship (or 'done' to finish): ");
-                string input = Console.ReadLine().Trim();
-
-                if (input.ToLower() == "done")
-                {
-                    if (ships.Count > 0)
-                    {
-                        isInputValid = true;
-                    }
-                    else
-                    {
-                        Console.WriteLine("You must enter at least one ship before finishing.");
-                    }
-                    continue;
-                }
-
-                string[] parts = input.Split(',');
-                if (parts.Length == 3)
-                {
-                    string type = parts[0].Trim().ToLower();
-                    bool isSizeValid = int.TryParse(parts[1].Trim(), out int size);
-                    bool isCountValid = int.TryParse(parts[2].Trim(), out int count);
-
-                    if ((type == "segment" || type == "carré" || type == "cube") && isSizeValid && isCountValid && size > 0 && count > 0)
-                    {
-                        // Vérifier si le type existe déjà
-                        int existingIndex = ships.FindIndex(s => s.type == type);
-
-                        if (existingIndex != -1)
-                        {
-                            // Remplacer l'ancien par la nouvelle valeur
-                            ships[existingIndex] = (type, size, count);
-                            Console.WriteLine($"Updated: ({type}, {size}, {count})");
-                        }
-                        else
-                        {
-                            // Ajouter un nouveau vaisseau
-                            ships.Add((type, size, count));
-                            Console.WriteLine($"Added: ({type}, {size}, {count})");
-                        }
-                    }
-                    else
-                    {
-                        Console.WriteLine("Invalid input. Make sure the type is 'segment', 'carré', or 'cube', and that size and count are positive numbers.");
-                    }
-                }
-                else
-                {
-                    Console.WriteLine("Invalid format. Please enter: type, size, count (e.g., segment, 3, 4)");
-                }
-            }
+            EnemyShip[] ships = CreateEnemyShips();
+            //@TODO WRITE SHIPS TO MONGO DB
             
             is_input_valid = false;
             while (!is_input_valid)
@@ -260,7 +265,7 @@ namespace BattleShip3D_TP
             Console.WriteLine("\nList of ships:");
             foreach (var ship in ships)
             {
-                Console.WriteLine($"- Type: {ship.type}, Size: {ship.size}, Count: {ship.count}");
+                Console.WriteLine($"- Type: {ship.type.ToString()}, Size: {ship.size}");
             }
 
             Console.WriteLine("\n Cube dimensions : " + dimension + "\n Time limit : " + time_limit + "\n Player number : " + player_number);
