@@ -83,7 +83,7 @@ namespace BattleShip3D_TP
                         returnArray = new string[reader.FieldCount];
                         for (int i = 0; i < reader.FieldCount; i++)
                         {
-                            returnArray[i] = (string)reader[i];
+                            returnArray[i] = reader.GetValue(i).ToString();
                         }
                     }
                 }
@@ -112,12 +112,11 @@ namespace BattleShip3D_TP
             }
         }
         
-        public static void CreateLobby(string dimension, string tempsLimite)
+        public static int CreateLobby(string dimension, string tempsLimite)
         {
+            int newId = 1;
             try
             {
-                // Trouver un ID unique
-                int newId = 1;
                 string idQuery = "SELECT MAX(Id_Partie) FROM Gr3_Partie;";
                 using (MySqlCommand cmd = new MySqlCommand(idQuery, conn))
                 {
@@ -146,7 +145,7 @@ namespace BattleShip3D_TP
                     int rowsAffected = cmd.ExecuteNonQuery();
                     if (rowsAffected > 0)
                     {
-                        Console.WriteLine("Partie créée avec succès !");
+                        Console.WriteLine($"Partie créée avec succès, l'Id de la partie est : {newId}!");
                     }
                     else
                     {
@@ -158,6 +157,7 @@ namespace BattleShip3D_TP
             {
                 Console.WriteLine($"Erreur lors de la création de la partie : {ex.Message}");
             }
+            return newId;
         }
 
     }

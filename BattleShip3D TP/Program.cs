@@ -13,6 +13,8 @@ class Program
         MySQLDatabase.Connect();
         battleshipLobby.Login();
         battleshipLobby.Lobby();
+        string pseudo = battleshipLobby.Pseudo;
+        int id_partie = battleshipLobby.Id_partie;
         MySQLDatabase.Disconnect();
 
         /*

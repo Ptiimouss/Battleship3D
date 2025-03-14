@@ -4,15 +4,76 @@ using MySql.Data.MySqlClient;
 using System.Linq;
 using System.Text;
 using System.Threading.Tasks;
+using MySqlX.XDevAPI.Common;
 
 namespace BattleShip3D_TP
 {
     class BattleshipLobby
     {
+        // Keys to transfer to MongoDb
         private string pseudo = "";
+        public string Pseudo => pseudo;
+        private int id_partie;
+        public int Id_partie => id_partie;
+
+        // Game Variables
         private string dimension = "";
         private string time_limit = "";
         private string player_number = "";
+
+        bool CreateAccount()
+        {
+            bool nicknameTaken = false;
+            while (!nicknameTaken)
+            {
+                Console.Write("Pseudo: ");
+                pseudo = Console.ReadLine();
+                string[] result = MySQLDatabase.CustomQuery($"SELECT Pseudo FROM Gr3_Joueur WHERE Pseudo = \"{pseudo}\";");
+                if (result != null)
+                {
+                    Console.WriteLine("This username is already taken!");
+                }
+                // Vérifier si le pseudo existe déjà
+                else
+                {
+                    nicknameTaken = true;
+                    Console.Write("Password: ");
+                    string mdp = Console.ReadLine();
+
+                    Console.Write("Lastname: ");
+                    string nom = Console.ReadLine();
+
+                    Console.Write("Firstname: ");
+                    string prenom = Console.ReadLine();
+
+                    Console.Write("Age: ");
+                    int age;
+                    while (!int.TryParse(Console.ReadLine(), out age) || age < 0)
+                    {
+                        Console.WriteLine("Invalid age, try again.");
+                    }
+
+                    Console.Write("Mail: ");
+                    string mail = Console.ReadLine();
+
+                    // Insérer le joueur
+                    string insertQuery = $"INSERT INTO Gr3_Joueur (Pseudo, Mot_de_passe, Nom, Prenom, Age, Mail) " +
+                                         $"VALUES (\"{pseudo}\", \"{mdp}\", \"{nom}\", \"{prenom}\", {age}, \"{mail}\");";
+
+                    if (MySQLDatabase.ExecuteNonQuery(insertQuery))
+                    {
+                        Console.WriteLine("Player successfully added!");
+                        return true;
+                    }
+                    else
+                    {
+                        Console.WriteLine("Failed to add the player.");
+                        // return;
+                    }
+                }
+            }
+            return false;
+        }
 
         public void Login()
         {
@@ -32,55 +93,7 @@ namespace BattleShip3D_TP
                     Console.WriteLine("Player Not Found, do you want to create it ? (yes/no)");
                     if (Console.ReadLine() == "yes")
                     {
-                        bool nicknameTaken = false;
-                        while (!nicknameTaken)
-                        {
-                            Console.Write("Pseudo: ");
-                            string pseudo = Console.ReadLine();
-                            result = MySQLDatabase.CustomQuery($"SELECT Pseudo FROM Gr3_Joueur WHERE Pseudo = \"{pseudo}\";");
-                            if (result != null)
-                            {
-                                Console.WriteLine("This username is already taken!");
-                            }
-                            // Vérifier si le pseudo existe déjà
-                            else
-                            {
-                                nicknameTaken = true;
-                                Console.Write("Password: ");
-                                string mdp = Console.ReadLine();
-
-                                Console.Write("Lastname: ");
-                                string nom = Console.ReadLine();
-
-                                Console.Write("Firstname: ");
-                                string prenom = Console.ReadLine();
-
-                                Console.Write("Age: ");
-                                int age;
-                                while (!int.TryParse(Console.ReadLine(), out age) || age < 0)
-                                {
-                                    Console.WriteLine("Invalid age, try again.");
-                                }
-
-                                Console.Write("Mail: ");
-                                string mail = Console.ReadLine();
-
-                                // Insérer le joueur
-                                string insertQuery = $"INSERT INTO Gr3_Joueur (Pseudo, Mot_de_passe, Nom, Prenom, Age, Mail) " +
-                                                     $"VALUES (\"{pseudo}\", \"{mdp}\", \"{nom}\", \"{prenom}\", {age}, \"{mail}\");";
-
-                                if (MySQLDatabase.ExecuteNonQuery(insertQuery))
-                                {
-                                    Console.WriteLine("Player successfully added!");
-                                    player_found = true;
-                                }
-                                else
-                                {
-                                    Console.WriteLine("Failed to add the player.");
-                                    // return;
-                                }
-                            }
-                        }
+                        player_found = CreateAccount();
                     }
                 }
             }
@@ -133,7 +146,6 @@ namespace BattleShip3D_TP
 
         private bool CreateGame()
         {
-            // @TODO
             bool is_input_valid = false;
             while (!is_input_valid)
             {
@@ -252,16 +264,28 @@ namespace BattleShip3D_TP
             }
 
             Console.WriteLine("\n Cube dimensions : " + dimension + "\n Time limit : " + time_limit + "\n Player number : " + player_number);
-            MySQLDatabase.CreateLobby(dimension, time_limit);
-            // string[] result = MySQLDatabase.CustomQuery($"INSERT;");
-            Console.WriteLine("Create Game :");
-            return false;
+            id_partie = MySQLDatabase.CreateLobby(dimension, time_limit);
+            return true;
         }
 
         private bool JoinGame()
         {
-            // @TODO
-            Console.WriteLine("join Game :");
+            bool game_found = false;
+            while (!game_found)
+            {
+                Console.WriteLine("Which Id would you like to join ? :");
+                string input = Console.ReadLine();
+                string[] result = MySQLDatabase.CustomQuery($"SELECT Id_Partie FROM Gr3_Partie WHERE Id_Partie = {input};");
+                if (result != null)
+                {
+                    int.TryParse(input, out id_partie);
+                    return true;
+                }
+                else
+                {
+                    Console.WriteLine("The game is not found, please try again.");
+                }
+            }
             return false;
         }
     }
