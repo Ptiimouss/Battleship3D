@@ -11,8 +11,8 @@ namespace BattleShip3D_TP
 
     public struct ShipCell
     {
-        Vector3 coordinate;
-        bool is_damaged;
+        public Vector3 coordinate;
+        public bool is_damaged;
 
         public ShipCell(Vector3 in_coordinate, bool in_is_damaged)
         {

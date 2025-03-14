@@ -1,4 +1,6 @@
-﻿using System;
+﻿using MongoDB.Bson;
+using MongoDB.Driver;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
@@ -6,15 +8,16 @@ using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
 
+
 namespace BattleShip3D_TP
 {
-    internal class BattleshipGame
+    class BattleshipGame
     {
         private string pseudo = "";
         private int id_partie;
 
-        public BattleshipGame(string in_pseudo, int in_id_partie) 
-        { 
+        public BattleshipGame(string in_pseudo, int in_id_partie)
+        {
             pseudo = in_pseudo;
             id_partie = in_id_partie;
         }
@@ -47,6 +50,7 @@ namespace BattleShip3D_TP
         public void GameLoop()
         {
             PrintRules();
+            GetEnemiesShip(id_partie);
             bool game_in_progess = true;
             string command;
             while (game_in_progess)
@@ -56,5 +60,55 @@ namespace BattleShip3D_TP
                 //string action, 
             }
         }
+
+        public static List<EnemyShip> GetEnemiesShip(int idPartie)
+        {
+            try
+            {
+                string collectionName = "Gr3_Vaisseaux";
+                var collection = MongoDatabase.GetCollection(collectionName);
+
+                var filter = Builders<BsonDocument>.Filter.Eq("Id_Partie", idPartie);
+
+                var documents = collection.Find(filter).ToList();
+
+                List<EnemyShip> enemyShips = new List<EnemyShip>();
+
+                foreach (var doc in documents)
+                {
+                    int id = doc["Id_Vaisseau"].AsInt32;
+                    ShipType type = Enum.TryParse(doc["Type"].AsString, out ShipType parsedType) ? parsedType : ShipType.Segment;
+                    int size = doc["Taille"].AsInt32;
+
+                    var coordinatesArray = doc["Coordonnees"].AsBsonArray;
+                    ShipCell[] cells = new ShipCell[coordinatesArray.Count];
+
+                    for (int i = 0; i < coordinatesArray.Count; i++)
+                    {
+                        var coordObject = coordinatesArray[i].AsBsonDocument;
+                        var posArray = coordObject["pos"].AsBsonArray; 
+
+                        Vector3 position = new Vector3(
+                            (float)posArray[0].AsDouble,
+                            (float)posArray[1].AsDouble,
+                            (float)posArray[2].AsDouble);
+
+                        bool isDamaged = coordObject["damaged"].AsBoolean;
+
+                        cells[i] = new ShipCell(position, isDamaged);
+                    }
+
+                    enemyShips.Add(new EnemyShip(id, type, size, cells));
+                }
+
+                return enemyShips;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erreur lors de la récupération des vaisseaux ennemis : {ex.Message}");
+                return new List<EnemyShip>();
+            }
+        }
+
     }
 }
