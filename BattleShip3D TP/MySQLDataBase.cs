@@ -10,13 +10,34 @@ namespace BattleShip3D_TP
     class MySQLDatabase
     {
         private static string connectionString = "Server=81.1.20.23;Database=USRS6N_1;UserId=EtudiantJvd;Password=!?CnamNAQ01?!;";
-
+        private static MySqlConnection conn = null;
+        
         // Connexion MySQL
-        public static MySqlConnection Connect()
+        public static void Connect()
         {
-            MySqlConnection conn = new MySqlConnection(connectionString);
-            conn.Open();
-            return conn;
+            Console.WriteLine("Connexion à MySQL...");
+            conn = new MySqlConnection(connectionString);
+            try
+            {
+                conn.Open();
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erreur de connexion MySQL : {ex.Message}");
+            }
+        }
+        public static void Disconnect()
+        {
+            conn = new MySqlConnection(connectionString);
+            try
+            {
+                conn.Close();
+                Console.WriteLine("Déconnexion réussie !");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erreur de déconnexion MySQL : {ex.Message}");
+            }
         }
 
         // Récupérer des données depuis une table MySQL, mettre en paramètre le nom de la table et une liste de colonnes
@@ -24,7 +45,7 @@ namespace BattleShip3D_TP
         {
             try
             {
-                using (MySqlConnection conn = Connect())
+                using (conn)
                 {
                     string columnsString = string.Join(", ", columns);
                     string query = $"SELECT {columnsString} FROM {tableName} LIMIT 10;";
@@ -54,18 +75,15 @@ namespace BattleShip3D_TP
             string[] returnArray = null;
             try
             {
-                using (MySqlConnection conn = Connect())
+                using (MySqlCommand cmd = new MySqlCommand(query, conn))
+                using (MySqlDataReader reader = cmd.ExecuteReader())
                 {
-                    using (MySqlCommand cmd = new MySqlCommand(query, conn))
-                    using (MySqlDataReader reader = cmd.ExecuteReader())
+                    while (reader.Read())
                     {
-                        while (reader.Read())
+                        returnArray = new string[reader.FieldCount];
+                        for (int i = 0; i < reader.FieldCount; i++)
                         {
-                            returnArray = new string[reader.FieldCount];
-                            for (int i = 0; i < reader.FieldCount; i++)
-                            {
-                                returnArray[i] = (string)reader[i];
-                            }
+                            returnArray[i] = (string)reader[i];
                         }
                     }
                 }
@@ -76,5 +94,71 @@ namespace BattleShip3D_TP
             }
             return returnArray;
         }
+        
+        public static bool ExecuteNonQuery(string query)
+        {
+            try
+            {
+                using (MySqlCommand cmd = new MySqlCommand(query, conn))
+                {
+                    int rowsAffected = cmd.ExecuteNonQuery();
+                    return rowsAffected > 0;
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erreur MySQL : {ex.Message}");
+                return false;
+            }
+        }
+        
+        public static void CreateLobby(string dimension, string tempsLimite)
+        {
+            try
+            {
+                // Trouver un ID unique
+                int newId = 1;
+                string idQuery = "SELECT MAX(Id_Partie) FROM Gr3_Partie;";
+                using (MySqlCommand cmd = new MySqlCommand(idQuery, conn))
+                {
+                    object result = cmd.ExecuteScalar();
+                    if (result != DBNull.Value)
+                    {
+                        newId = Convert.ToInt32(result) + 1;
+                    }
+                }
+
+                // Date actuelle au format YYYY-MM-DD
+                string dateCreation = DateTime.Now.ToString("yyyy-MM-dd");
+
+                // Requête d'insertion
+                string insertQuery = "INSERT INTO Gr3_Partie (Id_Partie, Dimension, Temps_limite, Etat_Partie, Date) " +
+                                     "VALUES (@id, @dimension, @temps, @etat, @date);";
+
+                using (MySqlCommand cmd = new MySqlCommand(insertQuery, conn))
+                {
+                    cmd.Parameters.AddWithValue("@id", newId);
+                    cmd.Parameters.AddWithValue("@dimension", dimension);
+                    cmd.Parameters.AddWithValue("@temps", tempsLimite);
+                    cmd.Parameters.AddWithValue("@etat", "ECO");
+                    cmd.Parameters.AddWithValue("@date", dateCreation);
+
+                    int rowsAffected = cmd.ExecuteNonQuery();
+                    if (rowsAffected > 0)
+                    {
+                        Console.WriteLine("Partie créée avec succès !");
+                    }
+                    else
+                    {
+                        Console.WriteLine("Échec de la création de la partie.");
+                    }
+                }
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erreur lors de la création de la partie : {ex.Message}");
+            }
+        }
+
     }
 }
