@@ -7,6 +7,8 @@ using System.Threading.Tasks;
 using MySqlX.XDevAPI.Common;
 using System.Numerics;
 using System.Runtime.InteropServices;
+using MongoDB.Bson;
+using MongoDB.Driver;
 
 namespace BattleShip3D_TP
 {
@@ -19,7 +21,7 @@ namespace BattleShip3D_TP
         public int Id_partie => id_partie;
 
         // Game Variables
-        private string dimension = "";
+        private int dimension;
         private string time_limit = "";
         private string player_number = "";
 
@@ -146,14 +148,65 @@ namespace BattleShip3D_TP
             }
         }
 
+        void SaveEnemiesShip(int idPartie, EnemyShip[] enemyShips)
+        {
+            try
+            {
+                string collectionName = "Gr3_Vaisseaux";
+                var collection = MongoDatabase.GetCollection(collectionName);
+
+                // Clearing current ships
+                var filter = Builders<BsonDocument>.Filter.Eq("Id_Partie", idPartie);
+                collection.DeleteMany(filter);
+
+                List<BsonDocument> documents = new List<BsonDocument>();
+                foreach (var ship in enemyShips)
+                {
+                    BsonArray coordinatesArray = new BsonArray();
+
+                    foreach (var cell in ship.cells)
+                    {
+                        var coordDocument = new BsonDocument
+                        {
+                            { "pos", new BsonArray { cell.coordinate.X, cell.coordinate.Y, cell.coordinate.Z } },
+                            { "damaged", cell.is_damaged }
+                        };
+                        coordinatesArray.Add(coordDocument);
+                    }
+
+                    var shipDocument = new BsonDocument
+                    {
+                        { "Id_Partie", idPartie },
+                        { "Id_Vaisseau", ship.id_ship },
+                        { "Type", ship.type.ToString() },
+                        { "Taille", ship.size },
+                        { "Coordonnees", coordinatesArray }
+                    };
+
+                    documents.Add(shipDocument);
+                }
+
+                if (documents.Count > 0)
+                {
+                    collection.InsertMany(documents);
+                }
+
+                Console.WriteLine("Enemy ships loaded in MongoDb.");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Error while loading ships to MongoDb : {ex.Message}");
+            }
+        }
+
         private EnemyShip[] CreateEnemyShips()
         {
             List<EnemyShip> ships = new List<EnemyShip>();
             bool isInputValid = false;
 
-            Console.WriteLine("Enter the list of enemy ships (size,type,position).");
+            Console.WriteLine("Enter the list of enemy ships (number,type,size).");
+            Console.WriteLine("Example input: 10, segment, 2");
             Console.WriteLine("Valid types: segment, carre, cube.");
-            Console.WriteLine("Example input: 3, segment, 0,0,0");
             Console.WriteLine("Type 'done' when you are finished.");
 
             while (!isInputValid)
@@ -175,23 +228,23 @@ namespace BattleShip3D_TP
                 }
 
                 string[] parts = input.Split(',');
-                if (parts.Length == 5)
+                if (parts.Length == 3)
                 {
                     string type_string = parts[1].Trim().ToLower();
-                    bool isSizeValid = int.TryParse(parts[0].Trim(), out int size);
-                    bool isXValid = int.TryParse(parts[2].Trim(), out int x);
-                    bool isYValid = int.TryParse(parts[3].Trim(), out int y);
-                    bool isZValid = int.TryParse(parts[4].Trim(), out int z);
+                    bool isCountValid = int.TryParse(parts[0].Trim(), out int count);
+                    bool isSizeValid = int.TryParse(parts[2].Trim(), out int size);
 
-                    // @TODO RANDOMIZE ENEMY SHIPS POSITION
-
-                    if (EnemyShip.ShipTypeFromString(type_string).HasValue && isSizeValid && isSizeValid && isXValid && isYValid && isZValid)
+                    if (EnemyShip.ShipTypeFromString(type_string).HasValue && isSizeValid && isCountValid)
                     {
-                        Vector3 shipPosition = new Vector3(x,y,z);
-                        ShipCell shipCell = new ShipCell(shipPosition,false);
-                        EnemyShip enyShip = new EnemyShip(ships.Count, EnemyShip.ShipTypeFromString(type_string).Value, size, new ShipCell[] {shipCell});
-                        // @TODO DEDUCE OTHER CELLS
-                        ships.Add(enyShip);
+                        Random random = new Random();
+                        for (int index = 0; index < count; index++)
+                        {
+                            Vector3 shipPosition = new Vector3(random.Next(0, dimension + 1), random.Next(0, dimension + 1), random.Next(0, dimension + 1));
+                            ShipCell shipCell = new ShipCell(shipPosition, false);
+                            EnemyShip enyShip = new EnemyShip(ships.Count, EnemyShip.ShipTypeFromString(type_string).Value, size, new ShipCell[] { shipCell });
+                            // @TODO DEDUCE OTHER CELLS
+                            ships.Add(enyShip);
+                        }
                     }
                     else
                     {
@@ -213,10 +266,9 @@ namespace BattleShip3D_TP
             while (!is_input_valid)
             {
                 Console.WriteLine("What will be the dimensions of the cube? (between 4 and 100)");
-                dimension = Console.ReadLine();
-                int player_choice = 0;
-                int.TryParse(dimension, out player_choice);
-                if (player_choice > 3 && player_choice < 101)
+                string input = Console.ReadLine();
+                int.TryParse(input, out dimension);
+                if (dimension > 3 && dimension < 101)
                 {
                     is_input_valid = true;
                 }
@@ -243,7 +295,6 @@ namespace BattleShip3D_TP
             }
 
             EnemyShip[] ships = CreateEnemyShips();
-            //@TODO WRITE SHIPS TO MONGO DB
             
             is_input_valid = false;
             while (!is_input_valid)
@@ -269,7 +320,10 @@ namespace BattleShip3D_TP
             }
 
             Console.WriteLine("\n Cube dimensions : " + dimension + "\n Time limit : " + time_limit + "\n Player number : " + player_number);
-            id_partie = MySQLDatabase.CreateLobby(dimension, time_limit);
+            id_partie = MySQLDatabase.CreateLobby(dimension.ToString(), time_limit);
+
+            SaveEnemiesShip(id_partie, ships);
+
             return true;
         }
 
