@@ -4,6 +4,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Numerics;
+using System.Diagnostics;
 using System.Text;
 using System.Text.RegularExpressions;
 using System.Threading.Tasks;
@@ -32,7 +33,8 @@ namespace BattleShip3D_TP
             Console.WriteLine("Your goal is to destroy the most enemy ships in the dangerous space of ELYSIUM.");
             Console.WriteLine("You can MOV freely with command MOV X,X,X , with X a coordinate in space.");
             Console.WriteLine("You can TIR freely with command TIR X,X,X , with X a coordinate in space.");
-            Console.WriteLine("The game end when there is no more enemy ships, good luck space fighter !");
+            Console.WriteLine("You can pause the game at any time by writing P.");
+            Console.WriteLine("The game end when there is no more enemy ships, or the time is over. Good luck space fighter !");
         }
 
         
@@ -50,7 +52,7 @@ namespace BattleShip3D_TP
 
                 return (action, x, y, z);
             }
-            Console.WriteLine("Entrée invalide. Format attendu: 'TIR x,y,z' ou 'MOV x,y,z'");
+            Console.WriteLine("Invalid input. Expected format: 'TIR x,y,z' or 'MOV x,y,z'");
             return null;
         }
 
@@ -68,7 +70,7 @@ namespace BattleShip3D_TP
                         if (ship.cells[i].coordinate == position)
                         {
                             ship.cells[i].is_damaged = true;
-                            Console.WriteLine($"Touché sur le vaisseau ID {ship.id_ship} à {position} !");
+                            Console.WriteLine($"Hit on ship {ship.id_ship} at {position} !");
                             hit = true;
 
                             UpdateCellDamageInMongo(id_partie, ship.id_ship, position);
@@ -81,18 +83,17 @@ namespace BattleShip3D_TP
 
                 if (!hit)
                 {
-                    Console.WriteLine("Tir manqué !");
+                    Console.WriteLine("Missed shot !");
                 }
             }
             else if (action == "MOV")
             {
-                // Exemple simple : mise à jour de la position joueur
                 playerPosition = position;
-                Console.WriteLine($"Joueur déplacé en {position}");
+                Console.WriteLine($"Player moved to {position}");
             }
             else
             {
-                Console.WriteLine("Action inconnue.");
+                Console.WriteLine("Unknown action.");
             }
         }
         
@@ -101,16 +102,44 @@ namespace BattleShip3D_TP
             PrintRules();
             enemyShips = GetEnemiesShip(id_partie);
             playerPosition = Vector3.Zero;
-
-            bool game_in_progess = true;
+            string[] result = MySQLDatabase.CustomQuery($"SELECT Temps_limite FROM Gr3_Partie WHERE Id_Partie = {id_partie};");
+            int timeLimit = (result != null && result.Length > 0 && int.TryParse(result[0], out int parsedTime)) ? parsedTime : 60;
+            bool game_in_progress = true;
             string command;
-            while (game_in_progess)
+    
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
+    
+            long pauseTime = 0;
+
+            while (game_in_progress)
             {
-                Console.Write("Enter your command : ");
+                int elapsedSeconds = (int)((stopwatch.ElapsedMilliseconds - pauseTime) / 1000);
+                int remainingTime = timeLimit - elapsedSeconds;
+
+                if (remainingTime <= 0)
+                {
+                    Console.WriteLine("Time's up! Game over.");
+                    game_in_progress = false;
+                    break;
+                }
+
+                Console.Write($"Enter your command ({remainingTime} seconds left) : ");
                 command = Console.ReadLine();
-                //string action, 
-                ParsePlayerInput(command, id_partie);
+
+                if (command == "P")
+                {
+                    PauseGame(id_partie, stopwatch, ref pauseTime, remainingTime);
+                    continue;
+                }
+                else
+                {
+                    ParsePlayerInput(command, id_partie);
+                }
             }
+            stopwatch.Stop();
+            string updateEtatPartie = $"UPDATE Gr3_Partie SET Temps_limite = \"0\", Etat_Partie = \"FIN\" WHERE Id_Partie = {id_partie};";
+            Console.WriteLine(MySQLDatabase.ExecuteNonQuery(updateEtatPartie) ? "" : "Error while ending the game");
         }
 
         public static List<EnemyShip> GetEnemiesShip(int idPartie)
@@ -198,6 +227,27 @@ namespace BattleShip3D_TP
             {
                 Console.WriteLine($"Erreur lors de la mise à jour de la cellule dans MongoDB : {ex.Message}");
             }
+        }
+        
+        public void PauseGame(int id_partie, Stopwatch stopwatch, ref long pauseTime, int remainingTime)
+        {
+            stopwatch.Stop();
+            long pauseStart = stopwatch.ElapsedMilliseconds;
+
+            string updateQuery = $"UPDATE Gr3_Partie SET Temps_limite = \"{remainingTime}\", Etat_Partie = \"PAU\" WHERE Id_Partie = {id_partie};";
+            Console.WriteLine(MySQLDatabase.ExecuteNonQuery(updateQuery) ? "Game paused." : "Error while pausing the game");
+
+            Console.WriteLine("Press any key to resume the game.");
+            Console.ReadKey();
+
+            updateQuery = $"UPDATE Gr3_Partie SET Etat_Partie = \"ECO\" WHERE Id_Partie = {id_partie};";
+            Console.WriteLine(MySQLDatabase.ExecuteNonQuery(updateQuery));
+
+            long pauseEnd = stopwatch.ElapsedMilliseconds;
+            pauseTime += (pauseEnd - pauseStart);
+
+            stopwatch.Start();
+            Console.WriteLine("Game resumed.");
         }
     }
 }

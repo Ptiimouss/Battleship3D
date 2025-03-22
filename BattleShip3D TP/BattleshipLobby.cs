@@ -280,11 +280,11 @@ namespace BattleShip3D_TP
             is_input_valid = false;
             while (!is_input_valid)
             {
-                Console.WriteLine("What will be the time limit of the game? (between 1 and 10 minutes)");
+                Console.WriteLine("What will be the time limit of the game? (between 20 and 90 seconds)");
                 time_limit = Console.ReadLine();
                 int player_choice = 0;
                 int.TryParse(time_limit, out player_choice);
-                if (player_choice > 0 && player_choice < 11)
+                if (player_choice >= 20 && player_choice <= 90)
                 {
                     is_input_valid = true;
                 }
