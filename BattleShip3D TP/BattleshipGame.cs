@@ -125,7 +125,7 @@ namespace BattleShip3D_TP
             while (game_in_progress)
             {
                 int elapsedSeconds = (int)((stopwatch.ElapsedMilliseconds - pauseTime) / 1000);
-                int remainingTime = timeLimit*60 - elapsedSeconds;
+                int remainingTime = timeLimit - elapsedSeconds;
 
                 if (remainingTime <= 0)
                 {
@@ -142,6 +142,11 @@ namespace BattleShip3D_TP
                     PauseGame(id_partie, stopwatch, ref pauseTime, remainingTime);
                     continue;
                 }
+                else if(command == "Q")
+                {
+                    game_in_progress = false;
+                    break;
+                }
                 else
                 {
                     ParsePlayerInput(command, id_partie);
@@ -150,9 +155,12 @@ namespace BattleShip3D_TP
             stopwatch.Stop();
             string updateEtatPartie = $"UPDATE Gr3_Partie SET Temps_limite = \"0\", Etat_Partie = \"FIN\" WHERE Id_Partie = {id_partie};";
             Console.WriteLine(MySQLDatabase.ExecuteNonQuery(updateEtatPartie) ? "" : "Error while ending the game");
+            PrintTopPlayer();
+            Console.WriteLine("Game ended, hit Escape to quit.");
+            while (Console.ReadKey(true).Key != ConsoleKey.Escape);
         }
 
-        public static List<EnemyShip> GetEnemiesShip(int idPartie)
+        public List<EnemyShip> GetEnemiesShip(int idPartie)
         {
             try
             {
@@ -201,7 +209,7 @@ namespace BattleShip3D_TP
             }
         }
 
-        public static void UpdateCellDamageInMongo(int idPartie, int shipId, Vector3 position)
+        void UpdateCellDamageInMongo(int idPartie, int shipId, Vector3 position)
         {
             try
             {
@@ -293,6 +301,45 @@ namespace BattleShip3D_TP
             {
                 Console.WriteLine($"Erreur lors du calcul du score : {ex.Message}");
                 return 0;
+            }
+        }
+
+        string PrintTopPlayer()
+        {
+            try
+            {
+                var collection = MongoDatabase.GetCollection("Gr3_Action");
+
+                var pipeline = new[]
+                {
+                    new BsonDocument("$match", new BsonDocument("IdPartie", id_partie)),
+                    new BsonDocument("$match", new BsonDocument("Resultat", new BsonDocument("$exists", true))),
+                    new BsonDocument("$group", new BsonDocument
+                    {
+                        { "_id", "$Pseudo" },
+                        { "TotalScore", new BsonDocument("$sum", "$Resultat") }
+                    }),
+                    new BsonDocument("$sort", new BsonDocument("TotalScore", -1)),
+                    new BsonDocument("$limit", 1)
+                };
+
+                var result = collection.Aggregate<BsonDocument>(pipeline).FirstOrDefault();
+
+                if (result != null)
+                {
+                    string topPlayer = result["_id"].AsString;
+                    int topScore = result["TotalScore"].AsInt32;
+                    Console.WriteLine($"Le gagnant est {topPlayer} avec un score de {topScore}");
+                    return topPlayer;
+                }
+
+                Console.WriteLine("Aucun gagnant n'a pu être trouvé.");
+                return null;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erreur lors de la récupération du meilleur joueur : {ex.Message}");
+                return null;
             }
         }
 
