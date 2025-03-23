@@ -12,7 +12,6 @@ namespace BattleShip3D_TP
         private static string connectionString = "Server=81.1.20.23;Database=USRS6N_1;UserId=EtudiantJvd;Password=!?CnamNAQ01?!;";
         private static MySqlConnection conn = null;
         
-        // Connexion MySQL
         public static void Connect()
         {
             Console.WriteLine("Connexion à MySQL...");
@@ -40,7 +39,6 @@ namespace BattleShip3D_TP
             }
         }
 
-        // Récupérer des données depuis une table MySQL, mettre en paramètre le nom de la table et une liste de colonnes
         public static void GetAllDataFromTable(string tableName, List<string> columns)
         {
             try
@@ -127,10 +125,8 @@ namespace BattleShip3D_TP
                     }
                 }
 
-                // Date actuelle au format YYYY-MM-DD
                 string dateCreation = DateTime.Now.ToString("yyyy-MM-dd");
 
-                // Requête d'insertion
                 string insertQuery = "INSERT INTO Gr3_Partie (Id_Partie, Dimension, Temps_limite, Etat_Partie, Date) " +
                                      "VALUES (@id, @dimension, @temps, @etat, @date);";
 

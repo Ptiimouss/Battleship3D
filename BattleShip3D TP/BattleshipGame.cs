@@ -29,6 +29,63 @@ namespace BattleShip3D_TP
             id_partie = in_id_partie;
         }
 
+        // --------- PUBLIC MAIN ENTRY
+
+        public void GameLoop()
+        {
+            PrintRules();
+            enemyShips = GetEnemiesShip(id_partie);
+            playerPosition = Vector3.Zero;
+            string[] result = MySQLDatabase.CustomQuery($"SELECT Temps_limite FROM Gr3_Partie WHERE Id_Partie = {id_partie};");
+            int timeLimit = (result != null && result.Length > 0 && int.TryParse(result[0], out int parsedTime)) ? parsedTime : 60;
+            bool game_in_progress = true;
+            string command;
+
+            Stopwatch stopwatch = new Stopwatch();
+            stopwatch.Start();
+
+            long pauseTime = 0;
+
+            while (game_in_progress)
+            {
+                int elapsedSeconds = (int)((stopwatch.ElapsedMilliseconds - pauseTime) / 1000);
+                int remainingTime = timeLimit - elapsedSeconds;
+
+                if (remainingTime <= 0)
+                {
+                    Console.WriteLine("Time's up! Game over.");
+                    game_in_progress = false;
+                    break;
+                }
+
+                Console.Write($"Enter your command ({remainingTime} seconds left) : ");
+                command = Console.ReadLine();
+
+                if (command == "P")
+                {
+                    PauseGame(id_partie, stopwatch, ref pauseTime, remainingTime);
+                    continue;
+                }
+                else if (command == "Q")
+                {
+                    game_in_progress = false;
+                    break;
+                }
+                else
+                {
+                    ParsePlayerInput(command, id_partie);
+                }
+            }
+            stopwatch.Stop();
+            string updateEtatPartie = $"UPDATE Gr3_Partie SET Temps_limite = \"0\", Etat_Partie = \"FIN\" WHERE Id_Partie = {id_partie};";
+            Console.WriteLine(MySQLDatabase.ExecuteNonQuery(updateEtatPartie) ? "" : "Error while ending the game");
+            PrintTopPlayer();
+            Console.WriteLine("Game ended, hit Escape to quit.");
+            while (Console.ReadKey(true).Key != ConsoleKey.Escape) ;
+        }
+
+        // --------- PRIVATE
+
         private void PrintRules()
         {
             Console.WriteLine("Welcome to a game of Battleship 3, here are the rules : ");
@@ -39,8 +96,8 @@ namespace BattleShip3D_TP
             Console.WriteLine("The game end when there is no more enemy ships, or the time is over. Good luck space fighter !");
         }
 
-        
-        public (string action, int x, int y, int z)? ParsePlayerInput(string input, int id_partie)
+
+        private (string action, int x, int y, int z)? ParsePlayerInput(string input, int id_partie)
         {
             var match = Regex.Match(input, "^(TIR|MOV) (\\d+),(\\d+),(\\d+)$");
             if (match.Success)
@@ -60,7 +117,7 @@ namespace BattleShip3D_TP
             return null;
         }
 
-        public void ActionPlayer(string action, int x, int y, int z, int id_partie)
+        private void ActionPlayer(string action, int x, int y, int z, int id_partie)
         {
             Vector3 position = new Vector3(x, y, z);
 
@@ -106,61 +163,8 @@ namespace BattleShip3D_TP
             currentScore = GetCurrentScore();
             Console.WriteLine($"Votre score actuel est de : {currentScore}");
         }
-        
-        public void GameLoop()
-        {
-            PrintRules();
-            enemyShips = GetEnemiesShip(id_partie);
-            playerPosition = Vector3.Zero;
-            string[] result = MySQLDatabase.CustomQuery($"SELECT Temps_limite FROM Gr3_Partie WHERE Id_Partie = {id_partie};");
-            int timeLimit = (result != null && result.Length > 0 && int.TryParse(result[0], out int parsedTime)) ? parsedTime : 60;
-            bool game_in_progress = true;
-            string command;
-    
-            Stopwatch stopwatch = new Stopwatch();
-            stopwatch.Start();
-    
-            long pauseTime = 0;
 
-            while (game_in_progress)
-            {
-                int elapsedSeconds = (int)((stopwatch.ElapsedMilliseconds - pauseTime) / 1000);
-                int remainingTime = timeLimit - elapsedSeconds;
-
-                if (remainingTime <= 0)
-                {
-                    Console.WriteLine("Time's up! Game over.");
-                    game_in_progress = false;
-                    break;
-                }
-
-                Console.Write($"Enter your command ({remainingTime} seconds left) : ");
-                command = Console.ReadLine();
-
-                if (command == "P")
-                {
-                    PauseGame(id_partie, stopwatch, ref pauseTime, remainingTime);
-                    continue;
-                }
-                else if(command == "Q")
-                {
-                    game_in_progress = false;
-                    break;
-                }
-                else
-                {
-                    ParsePlayerInput(command, id_partie);
-                }
-            }
-            stopwatch.Stop();
-            string updateEtatPartie = $"UPDATE Gr3_Partie SET Temps_limite = \"0\", Etat_Partie = \"FIN\" WHERE Id_Partie = {id_partie};";
-            Console.WriteLine(MySQLDatabase.ExecuteNonQuery(updateEtatPartie) ? "" : "Error while ending the game");
-            PrintTopPlayer();
-            Console.WriteLine("Game ended, hit Escape to quit.");
-            while (Console.ReadKey(true).Key != ConsoleKey.Escape);
-        }
-
-        public List<EnemyShip> GetEnemiesShip(int idPartie)
+        private List<EnemyShip> GetEnemiesShip(int idPartie)
         {
             try
             {
@@ -209,7 +213,7 @@ namespace BattleShip3D_TP
             }
         }
 
-        void UpdateCellDamageInMongo(int idPartie, int shipId, Vector3 position)
+        private void UpdateCellDamageInMongo(int idPartie, int shipId, Vector3 position)
         {
             try
             {
@@ -243,7 +247,7 @@ namespace BattleShip3D_TP
             }
         }
 
-        void UpdateAction(Vector3 position, string typeCoup, int? resultat = null)
+        private void UpdateAction(Vector3 position, string typeCoup, int? resultat = null)
         {
             try
             {
@@ -278,7 +282,7 @@ namespace BattleShip3D_TP
             }
         }
 
-        int GetCurrentScore()
+        private int GetCurrentScore()
         {
             try
             {
@@ -304,7 +308,7 @@ namespace BattleShip3D_TP
             }
         }
 
-        string PrintTopPlayer()
+        private string PrintTopPlayer()
         {
             try
             {
@@ -343,7 +347,7 @@ namespace BattleShip3D_TP
             }
         }
 
-        public void PauseGame(int id_partie, Stopwatch stopwatch, ref long pauseTime, int remainingTime)
+        private void PauseGame(int id_partie, Stopwatch stopwatch, ref long pauseTime, int remainingTime)
         {
             stopwatch.Stop();
             long pauseStart = stopwatch.ElapsedMilliseconds;

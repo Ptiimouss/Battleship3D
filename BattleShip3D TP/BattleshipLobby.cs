@@ -25,59 +25,7 @@ namespace BattleShip3D_TP
         private string time_limit = "";
         private string player_number = "";
 
-        bool CreateAccount()
-        {
-            bool nicknameTaken = false;
-            while (!nicknameTaken)
-            {
-                Console.Write("Pseudo: ");
-                pseudo = Console.ReadLine();
-                string[] result = MySQLDatabase.CustomQuery($"SELECT Pseudo FROM Gr3_Joueur WHERE Pseudo = \"{pseudo}\";");
-                if (result != null)
-                {
-                    Console.WriteLine("This username is already taken!");
-                }
-                // Vérifier si le pseudo existe déjà
-                else
-                {
-                    nicknameTaken = true;
-                    Console.Write("Password: ");
-                    string mdp = Console.ReadLine();
-
-                    Console.Write("Lastname: ");
-                    string nom = Console.ReadLine();
-
-                    Console.Write("Firstname: ");
-                    string prenom = Console.ReadLine();
-
-                    Console.Write("Age: ");
-                    int age;
-                    while (!int.TryParse(Console.ReadLine(), out age) || age < 0)
-                    {
-                        Console.WriteLine("Invalid age, try again.");
-                    }
-
-                    Console.Write("Mail: ");
-                    string mail = Console.ReadLine();
-
-                    // Insérer le joueur
-                    string insertQuery = $"INSERT INTO Gr3_Joueur (Pseudo, Mot_de_passe, Nom, Prenom, Age, Mail) " +
-                                         $"VALUES (\"{pseudo}\", \"{mdp}\", \"{nom}\", \"{prenom}\", {age}, \"{mail}\");";
-
-                    if (MySQLDatabase.ExecuteNonQuery(insertQuery))
-                    {
-                        Console.WriteLine("Player successfully added!");
-                        return true;
-                    }
-                    else
-                    {
-                        Console.WriteLine("Failed to add the player.");
-                        // return;
-                    }
-                }
-            }
-            return false;
-        }
+        // --------- PUBLIC MAIN ENTRIES
 
         public void Login()
         {
@@ -148,6 +96,59 @@ namespace BattleShip3D_TP
             }
         }
 
+        // --------- PRIVATE
+
+        bool CreateAccount()
+        {
+            bool nicknameTaken = false;
+            while (!nicknameTaken)
+            {
+                Console.Write("Pseudo: ");
+                pseudo = Console.ReadLine();
+                string[] result = MySQLDatabase.CustomQuery($"SELECT Pseudo FROM Gr3_Joueur WHERE Pseudo = \"{pseudo}\";");
+                if (result != null)
+                {
+                    Console.WriteLine("This username is already taken!");
+                }
+                else
+                {
+                    nicknameTaken = true;
+                    Console.Write("Password: ");
+                    string mdp = Console.ReadLine();
+
+                    Console.Write("Lastname: ");
+                    string nom = Console.ReadLine();
+
+                    Console.Write("Firstname: ");
+                    string prenom = Console.ReadLine();
+
+                    Console.Write("Age: ");
+                    int age;
+                    while (!int.TryParse(Console.ReadLine(), out age) || age < 0)
+                    {
+                        Console.WriteLine("Invalid age, try again.");
+                    }
+
+                    Console.Write("Mail: ");
+                    string mail = Console.ReadLine();
+
+                    string insertQuery = $"INSERT INTO Gr3_Joueur (Pseudo, Mot_de_passe, Nom, Prenom, Age, Mail) " +
+                                         $"VALUES (\"{pseudo}\", \"{mdp}\", \"{nom}\", \"{prenom}\", {age}, \"{mail}\");";
+
+                    if (MySQLDatabase.ExecuteNonQuery(insertQuery))
+                    {
+                        Console.WriteLine("Player successfully added!");
+                        return true;
+                    }
+                    else
+                    {
+                        Console.WriteLine("Failed to add the player.");
+                    }
+                }
+            }
+            return false;
+        }
+
         void SaveEnemiesShip(int idPartie, EnemyShip[] enemyShips)
         {
             try
@@ -155,9 +156,8 @@ namespace BattleShip3D_TP
                 string collectionName = "Gr3_Vaisseaux";
                 var collection = MongoDatabase.GetCollection(collectionName);
 
-                // Clearing current ships
                 var filter = Builders<BsonDocument>.Filter.Eq("Id_Partie", idPartie);
-                collection.DeleteMany(filter);
+                collection.DeleteMany(filter); // Clearing current ships
 
                 List<BsonDocument> documents = new List<BsonDocument>();
                 foreach (var ship in enemyShips)

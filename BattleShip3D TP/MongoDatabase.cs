@@ -45,28 +45,6 @@ namespace BattleShip3D_TP
                 Console.WriteLine($"Erreur de connexion MongoDB : {ex.Message}");
             }
         }
-
-        /*
-        public static List<BsonDocument> QueryCollection(string collectionName, string queryJson)
-        {
-            try
-            {
-                var collection = GetCollection(collectionName);
-                var filter = BsonDocument.Parse(queryJson);
-                var documents = collection.Find(filter).ToList();
-
-                return documents;
-            }
-            catch (Exception ex)
-            {
-                Console.WriteLine($"Erreur de requête MongoDB : {ex.Message}");
-                return new List<BsonDocument>();
-            }
-        }
-        */
-
-        // A TESTER
-        
         public static List<BsonDocument> ExecuteMongoCommand(string collectionName, string operation, string jsonContent, string jsonSort = "{}", int limit = 0)
         {
             try
