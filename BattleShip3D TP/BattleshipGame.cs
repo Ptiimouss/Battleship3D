@@ -21,6 +21,7 @@ namespace BattleShip3D_TP
         private List<EnemyShip> enemyShips;
         private Vector3 playerPosition;
         private int actionCount = 0;
+        private int currentScore = 0;
 
         public BattleshipGame(string in_pseudo, int in_id_partie)
         {
@@ -102,6 +103,8 @@ namespace BattleShip3D_TP
             {
                 Console.WriteLine("Unknown action.");
             }
+            currentScore = GetCurrentScore();
+            Console.WriteLine($"Votre score actuel est de : {currentScore}");
         }
         
         public void GameLoop()
@@ -122,7 +125,7 @@ namespace BattleShip3D_TP
             while (game_in_progress)
             {
                 int elapsedSeconds = (int)((stopwatch.ElapsedMilliseconds - pauseTime) / 1000);
-                int remainingTime = timeLimit - elapsedSeconds;
+                int remainingTime = timeLimit*60 - elapsedSeconds;
 
                 if (remainingTime <= 0)
                 {
@@ -264,6 +267,32 @@ namespace BattleShip3D_TP
             catch (Exception ex)
             {
                 Console.WriteLine($"Erreur lors de la mise à jour : {ex.Message}");
+            }
+        }
+
+        int GetCurrentScore()
+        {
+            try
+            {
+                var collection = MongoDatabase.GetCollection("Gr3_Action");
+
+                var filter = Builders<BsonDocument>.Filter.And(
+                    Builders<BsonDocument>.Filter.Eq("Pseudo", pseudo),
+                    Builders<BsonDocument>.Filter.Eq("IdPartie", id_partie),
+                    Builders<BsonDocument>.Filter.Exists("Resultat")
+                );
+
+                var score = collection
+                    .Find(filter)
+                    .ToList()
+                    .Sum(doc => doc["Resultat"].AsInt32);
+
+                return score;
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erreur lors du calcul du score : {ex.Message}");
+                return 0;
             }
         }
 
