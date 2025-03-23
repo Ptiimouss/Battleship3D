@@ -20,6 +20,7 @@ namespace BattleShip3D_TP
 
         private List<EnemyShip> enemyShips;
         private Vector3 playerPosition;
+        private int actionCount = 0;
 
         public BattleshipGame(string in_pseudo, int in_id_partie)
         {
@@ -50,6 +51,8 @@ namespace BattleShip3D_TP
       
                 ActionPlayer(action, x, y, z, id_partie);
 
+                actionCount++;
+
                 return (action, x, y, z);
             }
             Console.WriteLine("Invalid input. Expected format: 'TIR x,y,z' or 'MOV x,y,z'");
@@ -75,6 +78,8 @@ namespace BattleShip3D_TP
 
                             UpdateCellDamageInMongo(id_partie, ship.id_ship, position);
 
+                            UpdateAction(position, action, 1);
+
                             break;
                         }
                     }
@@ -84,12 +89,14 @@ namespace BattleShip3D_TP
                 if (!hit)
                 {
                     Console.WriteLine("Missed shot !");
+                    UpdateAction(position, action, 0);
                 }
             }
             else if (action == "MOV")
             {
                 playerPosition = position;
                 Console.WriteLine($"Player moved to {position}");
+                UpdateAction(position, action, 0);
             }
             else
             {
@@ -197,19 +204,15 @@ namespace BattleShip3D_TP
             {
                 var collection = MongoDatabase.GetCollection("Gr3_Vaisseaux");
 
-                // On filtre le bon document (le vaisseau)
                 var filter = Builders<BsonDocument>.Filter.And(
                     Builders<BsonDocument>.Filter.Eq("Id_Partie", idPartie),
                     Builders<BsonDocument>.Filter.Eq("Id_Vaisseau", shipId)
                 );
 
-                // Filtrer la sous-collection Coordonnees[].pos pour matcher la bonne cellule
                 var arrayFilter = Builders<BsonDocument>.Filter.Eq("Coordonnees.pos", new BsonArray { position.X, position.Y, position.Z });
 
-                // Combine les filtres pour cibler la cellule dans le tableau Coordonnees
                 var combinedFilter = Builders<BsonDocument>.Filter.And(filter, arrayFilter);
 
-                // Création de l'update : mettre damaged = true
                 var update = Builders<BsonDocument>.Update.Set("Coordonnees.$.damaged", true);
 
                 var result = collection.UpdateOne(combinedFilter, update);
@@ -228,7 +231,42 @@ namespace BattleShip3D_TP
                 Console.WriteLine($"Erreur lors de la mise à jour de la cellule dans MongoDB : {ex.Message}");
             }
         }
-        
+
+        void UpdateAction(Vector3 position, string typeCoup, int? resultat = null)
+        {
+            try
+            {
+                var collection = MongoDatabase.GetCollection("Gr3_Action");
+
+                var newAction = new BsonDocument
+                {
+                    { "Pseudo", pseudo },
+                    { "IdPartie", id_partie },
+                    { "NumeroCoup", actionCount },
+                    { "TypeCoup", typeCoup },
+                    { "Position", new BsonDocument
+                        {
+                            { "x", position.X },
+                            { "y", position.Y },
+                            { "z", position.Z }
+                        }
+                    }
+                };
+
+                if (typeCoup == "TIR" && resultat.HasValue)
+                {
+                    newAction.Add("Resultat", resultat.Value);
+                }
+
+                collection.InsertOne(newAction);
+                Console.WriteLine("Action insérée dans la base de donnée !");
+            }
+            catch (Exception ex)
+            {
+                Console.WriteLine($"Erreur lors de la mise à jour : {ex.Message}");
+            }
+        }
+
         public void PauseGame(int id_partie, Stopwatch stopwatch, ref long pauseTime, int remainingTime)
         {
             stopwatch.Stop();

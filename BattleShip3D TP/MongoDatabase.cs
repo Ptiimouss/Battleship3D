@@ -15,13 +15,11 @@ namespace BattleShip3D_TP
         private static MongoClient client = new MongoClient(connectionString);
         private static IMongoDatabase database = client.GetDatabase("USRS6N_2025");
 
-        // Connexion à une collection
         public static IMongoCollection<BsonDocument> GetCollection(string collectionName)
         {
             return database.GetCollection<BsonDocument>(collectionName);
         }
 
-        // Récupérer des données depuis une collection MongoDB, mettre en paramètre le nom de la collection et une liste de champs
         public static void GetAllDataFromCollection(string collectionName, List<string> fields)
         {
             try
